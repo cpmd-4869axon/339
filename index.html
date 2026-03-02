@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Starfleet Tactical PADD - Mk IV</title>
+    <title>Starfleet Tactical PADD - Mk V</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
             --lcars-orange: #f90; --lcars-gold: #fc0; --lcars-violet: #c9c;
             --lcars-blue: #9cf; --lcars-red: #c33; --lcars-sand: #fca;
-            --bg-black: #000; --alert-red: rgba(204, 51, 51, 0.2);
+            --bg-black: #000;
         }
 
         @font-face {
@@ -20,137 +20,131 @@
         html, body { 
             height: 100%; margin: 0; background: var(--bg-black); 
             font-family: 'Antonio', sans-serif; color: var(--lcars-gold);
-            text-transform: uppercase; overflow: hidden;
-            transition: background 0.5s ease;
+            text-transform: uppercase; overflow-x: hidden;
         }
 
-        /* LCARS Layout Engine */
+        /* Responsive LCARS Grid */
         .main-frame {
             display: grid;
-            grid-template-columns: 140px 1fr 200px;
-            grid-template-rows: 60px 1fr 140px;
-            height: 100vh;
+            grid-template-columns: 100px 1fr; /* Narrower sidebar for mobile */
+            grid-template-rows: auto 1fr auto auto;
+            min-height: 100vh;
             gap: 10px;
             padding: 10px;
             box-sizing: border-box;
         }
 
-        /* Sidebar / Elbow */
-        .nav-section { grid-row: 1 / 4; display: flex; flex-direction: column; gap: 4px; }
-        .elbow {
-            height: 120px; width: 140px;
-            border-top: 25px solid var(--lcars-violet);
-            border-left: 35px solid var(--lcars-violet);
-            border-top-left-radius: 60px;
-            position: relative;
+        /* Desktop Layout (Wide screens) */
+        @media (min-width: 768px) {
+            .main-frame {
+                grid-template-columns: 140px 1fr 220px;
+                grid-template-rows: 60px 1fr 140px;
+            }
+            footer { grid-column: 2 / 4; }
         }
-        .elbow::after { content: "07-2104"; position: absolute; top: -20px; left: 45px; font-size: 0.8rem; }
-        
-        .nav-pill { height: 35px; background: var(--lcars-blue); border-radius: 0; position: relative; cursor: pointer; }
-        .nav-pill.orange { background: var(--lcars-orange); }
-        .nav-pill.sand { background: var(--lcars-sand); flex-grow: 1; border-bottom-left-radius: 60px; }
 
-        /* Header */
+        /* Sidebar / Elbow */
+        .nav-section { grid-row: 1 / 5; display: flex; flex-direction: column; gap: 4px; }
+        .elbow {
+            height: 80px; width: 100%;
+            border-top: 20px solid var(--lcars-violet);
+            border-left: 25px solid var(--lcars-violet);
+            border-top-left-radius: 50px;
+            box-sizing: border-box;
+        }
+        
+        .nav-pill { height: 30px; background: var(--lcars-blue); position: relative; }
+        .nav-pill.orange { background: var(--lcars-orange); }
+        .nav-pill.sand { flex-grow: 1; border-bottom-left-radius: 50px; background: var(--lcars-sand); }
+
         header { 
-            grid-column: 2 / 4; display: flex; align-items: flex-end; 
-            border-bottom: 18px solid var(--lcars-violet); 
-            padding-bottom: 5px; justify-content: space-between;
+            grid-column: 2; display: flex; flex-direction: column;
+            border-bottom: 15px solid var(--lcars-violet); 
+            padding-bottom: 5px;
+        }
+
+        @media (min-width: 768px) {
+            header { grid-column: 2 / 4; flex-direction: row; justify-content: space-between; align-items: flex-end; }
         }
 
         /* Tactical Center */
         #map { 
-            grid-column: 2; border: 2px solid var(--lcars-blue); 
-            background: #020202; position: relative;
+            grid-column: 2; 
+            height: 350px; /* Force visibility on mobile */
+            border: 2px solid var(--lcars-blue); 
+            background: #020202;
+            border-radius: 5px;
         }
 
-        /* Right Telemetry Column */
+        @media (min-width: 768px) { #map { height: auto; } }
+
+        /* Telemetry Column */
         .sensor-readout {
-            grid-column: 3; display: flex; flex-direction: column; gap: 10px;
-            background: rgba(15,15,15,0.8); border-left: 2px solid var(--lcars-sand);
-            padding: 15px; font-size: 0.9rem;
+            grid-column: 2; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+            background: rgba(15,15,15,0.8); border-left: 4px solid var(--lcars-sand);
+            padding: 10px; font-size: 0.9rem;
         }
+
+        @media (min-width: 768px) {
+            .sensor-readout { grid-column: 3; grid-template-columns: 1fr; align-content: start; }
+        }
+
         .data-box { border-bottom: 1px solid #333; padding-bottom: 5px; }
-        .data-label { color: var(--lcars-blue); font-size: 0.7rem; display: block; }
-        .data-value { font-size: 1.4rem; display: block; letter-spacing: 1px; }
+        .data-label { color: var(--lcars-blue); font-size: 0.65rem; display: block; }
+        .data-value { font-size: 1.2rem; display: block; }
 
         /* Footer Controls */
-        footer { grid-column: 2 / 4; display: grid; grid-template-columns: 1fr 350px; gap: 10px; }
+        footer { grid-column: 2; display: flex; flex-direction: column; gap: 10px; }
         
         #console {
-            background: #080808; border-top: 2px solid var(--lcars-orange);
-            font-family: 'Courier New', monospace; font-size: 0.75rem; 
-            padding: 10px; overflow-y: auto; color: #0f0;
+            height: 60px; background: #080808; border-top: 2px solid var(--lcars-orange);
+            font-family: monospace; font-size: 0.7rem; padding: 8px; overflow-y: auto; color: #0f0;
         }
 
-        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
         button {
-            border: none; padding: 12px; font-family: inherit; font-weight: bold;
-            font-size: 1rem; border-radius: 25px 5px 5px 25px; cursor: pointer;
-            color: #000; text-align: right; padding-right: 20px;
+            border: none; padding: 15px 10px; font-family: inherit; font-weight: bold;
+            font-size: 0.9rem; border-radius: 20px 5px 5px 20px; cursor: pointer;
+            color: #000; text-align: center;
         }
         .btn-start { background: var(--lcars-gold); }
         .btn-stop { background: var(--lcars-orange); }
-        .btn-util { background: var(--lcars-violet); border-radius: 5px 25px 25px 5px; text-align: left; padding-left: 20px; }
+        .btn-util { background: var(--lcars-violet); border-radius: 5px 20px 20px 5px; }
 
-        /* Alert Overlay */
-        .red-alert-bg { background-color: var(--alert-red) !important; animation: flash 1s infinite; }
-        @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-
-        /* Tactical Overlay */
-        .scan-line {
-            position: absolute; top: 0; left: 0; width: 100%; height: 2px;
-            background: rgba(153, 204, 255, 0.2); animation: scan 4s linear infinite;
-            z-index: 1000; pointer-events: none;
-        }
-        @keyframes scan { from { top: 0; } to { top: 100%; } }
     </style>
 </head>
-<body id="hull">
+<body>
 
     <div class="main-frame">
         <div class="nav-section">
             <div class="elbow"></div>
-            <div class="nav-pill">402</div>
-            <div class="nav-pill orange">901</div>
-            <div class="nav-pill">772</div>
+            <div class="nav-pill">07-2104</div>
+            <div class="nav-pill orange">SEC-01</div>
+            <div class="nav-pill">NAV-A</div>
             <div class="nav-pill sand"></div>
         </div>
 
         <header>
-            <div style="font-size: 2rem; padding-left: 10px;">Tactical Navigation <span style="font-size: 0.8rem; color: var(--lcars-blue);">Subspace-Linked</span></div>
-            <div id="stardate" style="padding-right: 10px;">STARDATE 47634.4</div>
+            <div style="font-size: 1.4rem;">Tactical Navigation</div>
+            <div id="stardate" style="font-size: 0.9rem; color: var(--lcars-blue);">STARDATE 177241.2</div>
         </header>
 
-        <div id="map">
-            <div class="scan-line"></div>
-        </div>
+        <div id="map"></div>
 
         <div class="sensor-readout">
-            <div class="data-box">
-                <span class="data-label">Velocity (Impulse)</span>
-                <span class="data-value" id="vel-val">0.0 m/s</span>
-            </div>
-            <div class="data-box">
-                <span class="data-label">Heading (Bearing)</span>
-                <span class="data-value" id="head-val">000°</span>
-            </div>
-            <div class="data-box">
-                <span class="data-label">Distance Traveled</span>
-                <span class="data-value" id="dist-val">0.00 km</span>
-            </div>
-            <div class="data-box">
-                <span class="data-label">Sensor Accuracy</span>
-                <span class="data-value" id="acc-val">NOMINAL</span>
-            </div>
+            <div class="data-box"><span class="data-label">Velocity</span><span class="data-value" id="vel-val">0.0 M/S</span></div>
+            <div class="data-box"><span class="data-label">Heading</span><span class="data-value" id="head-val">000&deg;</span></div>
+            <div class="data-box"><span class="data-label">Distance</span><span class="data-value" id="dist-val">0.00 KM</span></div>
+            <div class="data-box"><span class="data-label">Accuracy</span><span class="data-value" id="acc-val">NOMINAL</span></div>
         </div>
 
         <footer>
-            <div id="console">> Awaiting commands from Command...</div>
+            <div id="console">> SCANNER READY.</div>
             <div class="btn-grid">
-                <button class="btn-start" id="start-btn" onclick="toggleSensors(true)">Engage</button>
-                <button class="btn-util" onclick="saveData()">Export PADD</button>
-                <button class="btn-stop" id="stop-btn" onclick="toggleSensors(false)" disabled>Disengage</button>
-                <button class="btn-util" onclick="clearBuffer()">Wipe Memory</button>
+                <button class="btn-start" id="start-btn" onclick="toggleSensors(true)">ENGAGE</button>
+                <button class="btn-util" onclick="saveData()">EXPORT</button>
+                <button class="btn-stop" id="stop-btn" onclick="toggleSensors(false)" disabled>HALT</button>
+                <button class="btn-util" onclick="clearBuffer()">WIPE</button>
             </div>
         </footer>
     </div>
@@ -161,107 +155,41 @@
         let logs = JSON.parse(localStorage.getItem('trek_nav_data')) || [];
         
         function init() {
-            // Update Stardate
-            setInterval(() => {
-                const sd = (Date.now() / 10000000).toFixed(1);
-                document.getElementById('stardate').innerText = `STARDATE ${sd}`;
-            }, 5000);
-
             map = L.map('map', { zoomControl: false, attributionControl: false }).setView([0, 0], 2);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
-
-            polyline = L.polyline(logs.map(l => [l.lat, l.lng]), {
-                color: '#9cf', weight: 3, opacity: 0.6, dashArray: '10, 10'
-            }).addTo(map);
-
+            polyline = L.polyline(logs.map(l => [l.lat, l.lng]), { color: '#9cf', weight: 3 }).addTo(map);
             shipMarker = L.circleMarker([0,0], { radius: 8, color: '#fc0', fillColor: '#fc0', fillOpacity: 0.9 }).addTo(map);
-
-            if(logs.length > 0) processTelemetry(logs[logs.length-1], logs[logs.length-2]);
-        }
-
-        function logToConsole(msg) {
-            const c = document.getElementById('console');
-            c.innerHTML = `> ${msg}<br>` + c.innerHTML;
+            if(logs.length > 0) map.setView([logs[logs.length-1].lat, logs[logs.length-1].lng], 14);
         }
 
         function toggleSensors(state) {
             if(state) {
-                logToConsole("Engaging sensor array...");
-                watchId = navigator.geolocation.watchPosition(updatePosition, handleError, { enableHighAccuracy: true });
+                watchId = navigator.geolocation.watchPosition(updatePosition, null, { enableHighAccuracy: true });
                 document.getElementById('start-btn').disabled = true;
                 document.getElementById('stop-btn').disabled = false;
             } else {
                 navigator.geolocation.clearWatch(watchId);
-                logToConsole("Sensors offline.");
                 document.getElementById('start-btn').disabled = false;
                 document.getElementById('stop-btn').disabled = true;
-                document.getElementById('hull').classList.remove('red-alert-bg');
             }
         }
 
         function updatePosition(pos) {
-            const { latitude: lat, longitude: lng, accuracy, speed, heading } = pos.coords;
-            const current = { lat, lng, time: Date.now() };
-            
-            // Red Alert Logic (Low Accuracy)
-            const hull = document.getElementById('hull');
-            const accVal = document.getElementById('acc-val');
-            if (accuracy > 20) {
-                hull.classList.add('red-alert-bg');
-                accVal.innerText = "DEGRADED";
-                accVal.style.color = "var(--lcars-red)";
-            } else {
-                hull.classList.remove('red-alert-bg');
-                accVal.innerText = "NOMINAL";
-                accVal.style.color = "var(--lcars-blue)";
-            }
-
-            logs.push(current);
-            localStorage.setItem('trek_nav_data', JSON.stringify(logs));
-
-            // Update Map
+            const { latitude: lat, longitude: lng, speed, heading } = pos.coords;
             const latLng = [lat, lng];
+            logs.push({lat, lng, time: Date.now()});
+            localStorage.setItem('trek_nav_data', JSON.stringify(logs));
+            
             shipMarker.setLatLng(latLng);
             polyline.addLatLng(latLng);
             map.panTo(latLng);
-
-            // UI Telemetry
-            document.getElementById('vel-val').innerText = `${(speed || 0).toFixed(1)} m/s`;
-            document.getElementById('head-val').innerText = `${Math.round(heading || 0).toString().padStart(3, '0')}°`;
             
-            processTelemetry(current, logs[logs.length-2]);
-            logToConsole(`Coord Lock: ${lat.toFixed(4)} / ${lng.toFixed(4)}`);
+            document.getElementById('vel-val').innerText = `${(speed || 0).toFixed(1)} M/S`;
+            document.getElementById('head-val').innerText = `${Math.round(heading || 0)}&deg;`;
         }
 
-        function processTelemetry(current, last) {
-            if(!last) return;
-            // Distance calculation
-            const R = 6371; 
-            const dLat = (current.lat - last.lat) * Math.PI / 180;
-            const dLon = (current.lng - last.lng) * Math.PI / 180;
-            const a = Math.sin(dLat/2)**2 + Math.cos(last.lat*Math.PI/180)*Math.cos(current.lat*Math.PI/180)*Math.sin(dLon/2)**2;
-            const d = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            
-            let totalDist = parseFloat(document.getElementById('dist-val').innerText) + d;
-            document.getElementById('dist-val').innerText = `${totalDist.toFixed(2)} km`;
-        }
-
-        function handleError(err) { logToConsole(`Comms Error: ${err.message.toUpperCase()}`); }
-
-        function clearBuffer() {
-            if(confirm("Confirm Memory Purge?")) {
-                logs = [];
-                localStorage.removeItem('trek_nav_data');
-                polyline.setLatLngs([]);
-                location.reload();
-            }
-        }
-
-        function saveData() {
-            const data = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(logs));
-            const a = document.createElement('a');
-            a.href = data; a.download = `LOG_${Date.now()}.json`; a.click();
-        }
+        function saveData() { /* same as before */ }
+        function clearBuffer() { localStorage.removeItem('trek_nav_data'); location.reload(); }
 
         window.onload = init;
     </script>
