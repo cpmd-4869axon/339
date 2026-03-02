@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Starfleet Tactical PADD - Mk VII</title>
+    <title>Starfleet Tactical PADD - Mk VIII</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
@@ -24,188 +24,192 @@
             user-select: none; -webkit-tap-highlight-color: transparent;
         }
 
-        /* Responsive Grid mk VII */
+        /* LCARS Elite Grid System */
         .main-frame {
             display: grid;
-            grid-template-columns: 80px 1fr;
+            grid-template-columns: 85px 1fr;
             grid-template-rows: 50px 1fr auto auto;
-            height: 100vh; height: -webkit-fill-available;
-            gap: 6px; padding: 10px; box-sizing: border-box;
+            height: 100vh; gap: 6px; padding: 10px; box-sizing: border-box;
         }
 
-        /* The iconic LCARS Elbow */
+        /* Sidebar Architecture */
         .nav-section { grid-row: 1 / 5; display: flex; flex-direction: column; gap: 4px; }
         .elbow {
-            height: 60px; width: 100%;
-            border-top: 15px solid var(--lcars-violet);
+            height: 65px; width: 100%;
+            border-top: 16px solid var(--lcars-violet);
             border-left: 20px solid var(--lcars-violet);
             border-top-left-radius: 40px;
             position: relative;
         }
-        
-        .nav-pill { height: 30px; background: var(--lcars-blue); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; color: #000; font-weight: bold; cursor: pointer; }
+        .nav-pill { height: 35px; background: var(--lcars-blue); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: #000; font-weight: bold; }
         .nav-pill.orange { background: var(--lcars-orange); }
-        .nav-pill.sand { flex-grow: 1; border-bottom-left-radius: 40px; background: var(--lcars-sand); align-items: flex-end; padding-bottom: 15px; }
+        .nav-pill.sand { flex-grow: 1; border-bottom-left-radius: 40px; background: var(--lcars-sand); align-items: flex-end; padding-bottom: 20px; }
 
         header { 
-            grid-column: 2; display: flex; justify-content: space-between; align-items: center;
-            border-bottom: 10px solid var(--lcars-violet); padding-bottom: 4px;
+            grid-column: 2; display: flex; justify-content: space-between; align-items: flex-end;
+            border-bottom: 12px solid var(--lcars-violet); padding-bottom: 4px;
         }
 
         #map { 
             grid-column: 2; border: 1px solid var(--lcars-blue); 
-            background: #050505; border-radius: 4px; z-index: 1;
+            background: #050505; border-radius: 4px; filter: contrast(1.1) brightness(0.9);
         }
 
+        /* Telemetry Readouts */
         .sensor-readout {
-            grid-column: 2; display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
-            background: rgba(15,15,15,0.9); border-left: 4px solid var(--lcars-sand);
-            padding: 8px; font-variant-numeric: tabular-nums;
+            grid-column: 2; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+            background: rgba(15,15,15,0.95); border-left: 5px solid var(--lcars-sand);
+            padding: 10px; font-variant-numeric: tabular-nums;
         }
-
         .data-box { border-bottom: 1px solid #333; }
-        .data-label { color: var(--lcars-blue); font-size: 0.6rem; display: block; }
-        .data-value { font-size: 1.2rem; display: block; }
+        .data-label { color: var(--lcars-blue); font-size: 0.65rem; display: block; }
+        .data-value { font-size: 1.3rem; display: block; letter-spacing: 1px; }
 
         footer { grid-column: 2; display: flex; flex-direction: column; gap: 6px; }
-        
         #console {
-            height: 45px; background: #000; border: 1px solid var(--lcars-orange);
-            font-family: monospace; font-size: 0.65rem; padding: 6px; overflow-y: hidden; color: #0f0;
+            height: 50px; background: #000; border: 1px solid var(--lcars-orange);
+            font-family: 'Courier New', monospace; font-size: 0.7rem; padding: 6px; 
+            overflow: hidden; color: #0f0; border-radius: 4px;
         }
 
-        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
         button {
-            border: none; padding: 12px 0; font-family: inherit; font-weight: bold;
-            font-size: 1rem; border-radius: 20px 4px 4px 20px; cursor: pointer;
-            color: #000; transition: 0.1s;
+            border: none; padding: 14px 0; font-family: inherit; font-weight: bold;
+            font-size: 1.1rem; border-radius: 22px 4px 4px 22px; cursor: pointer;
+            color: #000; transition: transform 0.05s, filter 0.1s;
         }
-        button:active { filter: brightness(1.5); transform: scale(0.98); }
+        button:active { transform: scale(0.96); filter: brightness(1.4); }
         .btn-start { background: var(--lcars-gold); }
         .btn-stop { background: var(--lcars-orange); }
-        .btn-util { background: var(--lcars-violet); border-radius: 4px 20px 20px 4px; }
+        .btn-util { background: var(--lcars-violet); border-radius: 4px 22px 22px 4px; }
 
-        /* RED ALERT STATE */
-        .red-alert { animation: alert-flash 1.5s infinite; }
-        @keyframes alert-flash { 
-            0%, 100% { background: var(--bg-black); }
-            50% { background: var(--alert-red); }
-        }
-
-        .scanning-pulse { animation: pulse 2s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+        /* Tactical States */
+        .red-alert { animation: red-flash 1s infinite; }
+        @keyframes red-flash { 0%, 100% { background: #000; } 50% { background: rgba(200, 0, 0, 0.25); } }
+        
+        .map-pulse { animation: map-scan 3s infinite linear; }
+        @keyframes map-scan { 0% { opacity: 0.8; } 50% { opacity: 1; } 100% { opacity: 0.8; } }
     </style>
 </head>
 <body id="hull">
 
     <div class="main-frame">
         <nav class="nav-section">
-            <div class="elbow" onclick="playBeep(880, 0.1)"></div>
-            <div class="nav-pill">DATA</div>
+            <div class="elbow"></div>
+            <div class="nav-pill">NAV-01</div>
             <div class="nav-pill orange" id="status-pill">STBY</div>
-            <div class="nav-pill sand">LCARS v7</div>
+            <div class="nav-pill sand">LCARS</div>
         </nav>
 
         <header>
-            <div style="font-size: 1.4rem;">Tactical Grid</div>
-            <div id="stardate" style="font-size: 0.8rem; color: var(--lcars-blue);">SD 00000.0</div>
+            <div style="font-size: 1.5rem; letter-spacing: 2px;">Tactical PADD</div>
+            <div id="stardate" style="font-size: 0.85rem; color: var(--lcars-blue);">SD 00000.0</div>
         </header>
 
         <div id="map"></div>
 
         <section class="sensor-readout">
-            <div class="data-box"><span class="data-label">IMPULSE</span><span class="data-value" id="vel-val">0.0 M/S</span></div>
-            <div class="data-box"><span class="data-label">HEADING</span><span class="data-value" id="head-val">000&deg;</span></div>
-            <div class="data-box"><span class="data-label">SECTOR</span><span class="data-value" id="dist-val">0.00 KM</span></div>
+            <div class="data-box"><span class="data-label">VELOCITY</span><span class="data-value" id="vel-val">0.0 M/S</span></div>
+            <div class="data-box"><span class="data-label">BEARING</span><span class="data-value" id="head-val">000&deg;</span></div>
+            <div class="data-box"><span class="data-label">SECTOR DIST</span><span class="data-value" id="dist-val">0.00 KM</span></div>
             <div class="data-box"><span class="data-label">SENSORS</span><span class="data-value" id="acc-val">NOMINAL</span></div>
         </section>
 
         <footer>
-            <div id="console">> SENSORS OFFLINE...</div>
+            <div id="console">> TRICORDER LINK IDLE...</div>
             <div class="btn-grid">
-                <button class="btn-start" id="start-btn" onclick="toggleSensors(true)">ENGAGE</button>
-                <button class="btn-util" onclick="saveData()">DL PADD</button>
-                <button class="btn-stop" id="stop-btn" onclick="toggleSensors(false)" disabled>HALT</button>
-                <button class="btn-util" onclick="clearBuffer()">PURGE</button>
+                <button class="btn-start" id="start-btn" onclick="toggleTracking(true)">ENGAGE</button>
+                <button class="btn-util" onclick="downloadLogs()">DOWNLOAD</button>
+                <button class="btn-stop" id="stop-btn" onclick="toggleTracking(false)" disabled>CEASE</button>
+                <button class="btn-util" onclick="purgeMemory()">PURGE</button>
             </div>
         </footer>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        let map, polyline, shipMarker, watchId = null;
+        let map, polyline, shipMarker, trackingInterval = null;
         let logs = JSON.parse(localStorage.getItem('trek_nav_data')) || [];
         
-        // --- Web Audio Beeps ---
+        // --- High Frequency Audio ---
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        function playBeep(freq = 440, duration = 0.05) {
+        function beep(f, d) {
             if (audioCtx.state === 'suspended') audioCtx.resume();
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'square';
-            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.start(); osc.stop(audioCtx.currentTime + duration);
+            const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+            o.type = 'sine'; o.frequency.value = f; g.gain.value = 0.1;
+            o.connect(g); g.connect(audioCtx.destination);
+            o.start(); g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + d);
+            o.stop(audioCtx.currentTime + d);
+        }
+
+        function init() {
+            map = L.map('map', { zoomControl: false, attributionControl: false }).setView([0, 0], 2);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+            polyline = L.polyline(logs.map(l => [l.lat, l.lng]), { color: '#9cf', weight: 3, opacity: 0.7 }).addTo(map);
+            shipMarker = L.circleMarker([0,0], { radius: 7, color: '#fc0', fillColor: '#fc0', fillOpacity: 0.9 }).addTo(map);
+            
+            if(logs.length > 0) {
+                const last = logs[logs.length-1];
+                map.setView([last.lat, last.lng], 16);
+                updateDisplay();
+            }
+            setInterval(updateStardate, 5000);
+            updateStardate();
         }
 
         function updateStardate() {
             const now = new Date();
-            const sd = (now.getFullYear() - 1900) * 1000 + (now.getMonth() * 83.3) + (now.getDate() * 2.7);
+            const sd = (now.getFullYear() - 1900) * 1000 + (now.getMonth() * 83) + (now.getDate() * 2.7);
             document.getElementById('stardate').innerText = `SD ${sd.toFixed(1)}`;
         }
 
-        function initMap() {
-            map = L.map('map', { zoomControl: false, attributionControl: false }).setView([0, 0], 2);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
-            polyline = L.polyline(logs.map(l => [l.lat, l.lng]), { color: '#9cf', weight: 3 }).addTo(map);
-            shipMarker = L.circleMarker([0,0], { radius: 8, color: '#fc0', fillColor: '#fc0', fillOpacity: 0.9 }).addTo(map);
-            
-            if(logs.length > 0) {
-                map.setView([logs[logs.length-1].lat, logs[logs.length-1].lng], 16);
-                calculateDistance();
-            }
-            updateStardate();
-        }
-
-        function toggleSensors(state) {
-            playBeep(state ? 660 : 440, 0.1);
-            if (window.navigator.vibrate) window.navigator.vibrate(state ? [30, 50] : 20);
+        function toggleTracking(state) {
+            beep(state ? 880 : 440, 0.15);
+            if (window.navigator.vibrate) window.navigator.vibrate(state ? [40, 30] : 20);
 
             if(state) {
-                watchId = navigator.geolocation.watchPosition(updatePosition, (e) => log(`ERR: ${e.code}`), { enableHighAccuracy: true });
+                // Elite 1-second Polling Engine
+                trackingInterval = setInterval(() => {
+                    navigator.geolocation.getCurrentPosition(processPosition, (e) => log(`SENSOR FAILURE: ${e.code}`), { 
+                        enableHighAccuracy: true, timeout: 900 
+                    });
+                }, 1000);
+
                 document.getElementById('start-btn').disabled = true;
                 document.getElementById('stop-btn').disabled = false;
                 document.getElementById('status-pill').innerText = "LOCK";
-                log("LINK ESTABLISHED.");
+                document.getElementById('map').classList.add('map-pulse');
+                log("SENSORS ENGAGED (1Hz)");
             } else {
-                navigator.geolocation.clearWatch(watchId);
+                clearInterval(trackingInterval);
                 document.getElementById('start-btn').disabled = false;
                 document.getElementById('stop-btn').disabled = true;
                 document.getElementById('status-pill').innerText = "STBY";
+                document.getElementById('map').classList.remove('map-pulse');
                 document.getElementById('hull').classList.remove('red-alert');
-                log("LINK TERMINATED.");
+                log("SENSORS OFFLINE.");
             }
         }
 
-        function updatePosition(pos) {
+        function processPosition(pos) {
             const { latitude: lat, longitude: lng, speed, heading, accuracy } = pos.coords;
-            logs.push({lat, lng, time: Date.now()});
+            const current = { lat, lng, time: Date.now() };
+            
+            logs.push(current);
+            if(logs.length > 5000) logs.shift(); // Memory management
             localStorage.setItem('trek_nav_data', JSON.stringify(logs));
             
             shipMarker.setLatLng([lat, lng]);
             polyline.addLatLng([lat, lng]);
             map.panTo([lat, lng]);
-            
-            // Telemetry Updates
+
+            // Advanced Telemetry UI
             document.getElementById('vel-val').innerText = `${(speed || 0).toFixed(1)} M/S`;
             document.getElementById('head-val').innerText = `${Math.round(heading || 0).toString().padStart(3, '0')}&deg;`;
             
-            // Red Alert Logic
             const accField = document.getElementById('acc-val');
-            if (accuracy > 25) {
-                accField.innerText = "INTERFERENCE";
+            if (accuracy > 20) {
+                accField.innerText = "DEGRADED";
                 accField.style.color = "var(--lcars-red)";
                 document.getElementById('hull').classList.add('red-alert');
             } else {
@@ -213,41 +217,41 @@
                 accField.style.color = "var(--lcars-blue)";
                 document.getElementById('hull').classList.remove('red-alert');
             }
-
-            calculateDistance();
+            
+            updateDisplay();
             log(`LOCK: ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
         }
 
-        function calculateDistance() {
-            let total = 0;
+        function updateDisplay() {
+            let dist = 0;
             for(let i=1; i<logs.length; i++) {
-                total += L.latLng(logs[i-1].lat, logs[i-1].lng).distanceTo(L.latLng(logs[i].lat, logs[i].lng));
+                dist += L.latLng(logs[i-1].lat, logs[i-1].lng).distanceTo(L.latLng(logs[i].lat, logs[i].lng));
             }
-            document.getElementById('dist-val').innerText = `${(total/1000).toFixed(2)} KM`;
+            document.getElementById('dist-val').innerText = `${(dist/1000).toFixed(2)} KM`;
         }
 
         function log(msg) {
             const c = document.getElementById('console');
-            c.innerText = `> ${msg}`; // Keeps only latest burst for mobile readability
+            c.innerText = `> ${msg}`;
         }
 
-        function clearBuffer() {
-            playBeep(220, 0.2);
-            if(confirm("PURGE MEMORY?")) {
+        function purgeMemory() {
+            beep(220, 0.3);
+            if(confirm("PURGE TACTICAL BUFFER?")) {
                 localStorage.clear();
                 location.reload();
             }
         }
 
-        function saveData() {
-            playBeep(880, 0.05);
-            const blob = new Blob([JSON.stringify(logs)], {type: 'application/json'});
-            const url = URL.createObjectURL(blob);
+        function downloadLogs() {
+            beep(1200, 0.05);
+            const data = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(logs));
             const a = document.createElement('a');
-            a.href = url; a.download = `padd_log_${Date.now()}.json`; a.click();
+            a.setAttribute("href", data); a.setAttribute("download", `NAV_LOG_${Date.now()}.json`);
+            a.click();
         }
 
-        window.onload = initMap;
+        window.onload = init;
     </script>
 </body>
 </html>
