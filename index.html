@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Starfleet Tactical PADD - Mk V</title>
+    <title>Starfleet Tactical PADD - Mk VI</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
             --lcars-orange: #f90; --lcars-gold: #fc0; --lcars-violet: #c9c;
             --lcars-blue: #9cf; --lcars-red: #c33; --lcars-sand: #fca;
-            --bg-black: #000;
+            --bg-black: #000; --alert-red: rgba(204, 51, 51, 0.3);
         }
 
         @font-face {
@@ -20,131 +20,115 @@
         html, body { 
             height: 100%; margin: 0; background: var(--bg-black); 
             font-family: 'Antonio', sans-serif; color: var(--lcars-gold);
-            text-transform: uppercase; overflow-x: hidden;
+            text-transform: uppercase; overflow: hidden;
+            user-select: none;
         }
 
-        /* Responsive LCARS Grid */
+        /* Tactical Grid Layout */
         .main-frame {
             display: grid;
-            grid-template-columns: 100px 1fr; /* Narrower sidebar for mobile */
+            grid-template-columns: 90px 1fr;
             grid-template-rows: auto 1fr auto auto;
-            min-height: 100vh;
-            gap: 10px;
-            padding: 10px;
+            height: 100vh;
+            gap: 8px;
+            padding: 8px;
             box-sizing: border-box;
         }
 
-        /* Desktop Layout (Wide screens) */
-        @media (min-width: 768px) {
-            .main-frame {
-                grid-template-columns: 140px 1fr 220px;
-                grid-template-rows: 60px 1fr 140px;
-            }
-            footer { grid-column: 2 / 4; }
-        }
-
-        /* Sidebar / Elbow */
+        /* LCARS Geometry */
         .nav-section { grid-row: 1 / 5; display: flex; flex-direction: column; gap: 4px; }
         .elbow {
-            height: 80px; width: 100%;
-            border-top: 20px solid var(--lcars-violet);
-            border-left: 25px solid var(--lcars-violet);
-            border-top-left-radius: 50px;
+            height: 70px; width: 100%;
+            border-top: 18px solid var(--lcars-violet);
+            border-left: 22px solid var(--lcars-violet);
+            border-top-left-radius: 45px;
             box-sizing: border-box;
+            position: relative;
         }
+        .elbow::after { content: "07-2104"; position: absolute; top: -15px; left: 30px; font-size: 0.6rem; color: var(--lcars-violet); }
         
-        .nav-pill { height: 30px; background: var(--lcars-blue); position: relative; }
+        .nav-pill { height: 32px; background: var(--lcars-blue); border-radius: 0; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; color: #000; font-weight: bold; }
         .nav-pill.orange { background: var(--lcars-orange); }
-        .nav-pill.sand { flex-grow: 1; border-bottom-left-radius: 50px; background: var(--lcars-sand); }
+        .nav-pill.red { background: var(--lcars-red); }
+        .nav-pill.sand { flex-grow: 1; border-bottom-left-radius: 45px; background: var(--lcars-sand); align-items: flex-end; padding-bottom: 20px; }
 
         header { 
-            grid-column: 2; display: flex; flex-direction: column;
-            border-bottom: 15px solid var(--lcars-violet); 
-            padding-bottom: 5px;
+            grid-column: 2; display: flex; justify-content: space-between; align-items: flex-end;
+            border-bottom: 12px solid var(--lcars-violet); padding-bottom: 4px;
         }
 
-        @media (min-width: 768px) {
-            header { grid-column: 2 / 4; flex-direction: row; justify-content: space-between; align-items: flex-end; }
-        }
-
-        /* Tactical Center */
         #map { 
-            grid-column: 2; 
-            height: 350px; /* Force visibility on mobile */
-            border: 2px solid var(--lcars-blue); 
-            background: #020202;
-            border-radius: 5px;
+            grid-column: 2; border: 1px solid var(--lcars-blue); 
+            background: #050505; border-radius: 4px;
+            filter: saturate(1.2) brightness(0.8) contrast(1.1); /* Tactical Filter */
         }
 
-        @media (min-width: 768px) { #map { height: auto; } }
-
-        /* Telemetry Column */
         .sensor-readout {
-            grid-column: 2; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-            background: rgba(15,15,15,0.8); border-left: 4px solid var(--lcars-sand);
-            padding: 10px; font-size: 0.9rem;
+            grid-column: 2; display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;
+            background: rgba(20, 20, 20, 0.9); border-left: 4px solid var(--lcars-sand);
+            padding: 8px;
         }
 
-        @media (min-width: 768px) {
-            .sensor-readout { grid-column: 3; grid-template-columns: 1fr; align-content: start; }
-        }
+        .data-box { border-bottom: 1px solid #333; }
+        .data-label { color: var(--lcars-blue); font-size: 0.6rem; display: block; }
+        .data-value { font-size: 1.1rem; display: block; letter-spacing: 1px; }
 
-        .data-box { border-bottom: 1px solid #333; padding-bottom: 5px; }
-        .data-label { color: var(--lcars-blue); font-size: 0.65rem; display: block; }
-        .data-value { font-size: 1.2rem; display: block; }
-
-        /* Footer Controls */
-        footer { grid-column: 2; display: flex; flex-direction: column; gap: 10px; }
+        footer { grid-column: 2; display: flex; flex-direction: column; gap: 6px; }
         
         #console {
-            height: 60px; background: #080808; border-top: 2px solid var(--lcars-orange);
-            font-family: monospace; font-size: 0.7rem; padding: 8px; overflow-y: auto; color: #0f0;
+            height: 50px; background: #000; border: 1px solid var(--lcars-orange);
+            font-family: monospace; font-size: 0.65rem; padding: 6px; overflow-y: auto; color: #0f0;
+            border-radius: 4px;
         }
 
-        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
         button {
-            border: none; padding: 15px 10px; font-family: inherit; font-weight: bold;
-            font-size: 0.9rem; border-radius: 20px 5px 5px 20px; cursor: pointer;
-            color: #000; text-align: center;
+            border: none; padding: 12px 0; font-family: inherit; font-weight: bold;
+            font-size: 1rem; border-radius: 18px 4px 4px 18px; cursor: pointer;
+            color: #000; transition: filter 0.1s;
         }
+        button:active { filter: brightness(1.5); }
         .btn-start { background: var(--lcars-gold); }
         .btn-stop { background: var(--lcars-orange); }
-        .btn-util { background: var(--lcars-violet); border-radius: 5px 20px 20px 5px; }
+        .btn-util { background: var(--lcars-violet); border-radius: 4px 18px 18px 4px; }
 
+        /* Scanning Animation */
+        .scanning-pulse { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 204, 0, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(255, 204, 0, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 204, 0, 0); } }
     </style>
 </head>
 <body>
 
-    <div class="main-frame">
-        <div class="nav-section">
+    <div class="main-frame" id="app-frame">
+        <nav class="nav-section">
             <div class="elbow"></div>
-            <div class="nav-pill">07-2104</div>
-            <div class="nav-pill orange">SEC-01</div>
-            <div class="nav-pill">NAV-A</div>
-            <div class="nav-pill sand"></div>
-        </div>
+            <div class="nav-pill">SYS</div>
+            <div class="nav-pill orange">TAC</div>
+            <div class="nav-pill red" id="alert-pill">NRM</div>
+            <div class="nav-pill sand">LCARS</div>
+        </nav>
 
         <header>
-            <div style="font-size: 1.4rem;">Tactical Navigation</div>
-            <div id="stardate" style="font-size: 0.9rem; color: var(--lcars-blue);">STARDATE 177241.2</div>
+            <div style="font-size: 1.2rem;">Tactical Scan</div>
+            <div id="stardate" style="font-size: 0.8rem; color: var(--lcars-blue);">SD 00000.0</div>
         </header>
 
         <div id="map"></div>
 
-        <div class="sensor-readout">
-            <div class="data-box"><span class="data-label">Velocity</span><span class="data-value" id="vel-val">0.0 M/S</span></div>
-            <div class="data-box"><span class="data-label">Heading</span><span class="data-value" id="head-val">000&deg;</span></div>
-            <div class="data-box"><span class="data-label">Distance</span><span class="data-value" id="dist-val">0.00 KM</span></div>
-            <div class="data-box"><span class="data-label">Accuracy</span><span class="data-value" id="acc-val">NOMINAL</span></div>
-        </div>
+        <section class="sensor-readout">
+            <div class="data-box"><span class="data-label">Velo.</span><span class="data-value" id="vel-val">0.0 M/S</span></div>
+            <div class="data-box"><span class="data-label">Bear.</span><span class="data-value" id="head-val">000&deg;</span></div>
+            <div class="data-box"><span class="data-label">Dist.</span><span class="data-value" id="dist-val">0.00 KM</span></div>
+            <div class="data-box"><span class="data-label">Prec.</span><span class="data-value" id="acc-val">99%</span></div>
+        </section>
 
         <footer>
-            <div id="console">> SCANNER READY.</div>
+            <div id="console">> TRICORDER INITIALIZED.</div>
             <div class="btn-grid">
                 <button class="btn-start" id="start-btn" onclick="toggleSensors(true)">ENGAGE</button>
-                <button class="btn-util" onclick="saveData()">EXPORT</button>
-                <button class="btn-stop" id="stop-btn" onclick="toggleSensors(false)" disabled>HALT</button>
-                <button class="btn-util" onclick="clearBuffer()">WIPE</button>
+                <button class="btn-util" onclick="saveData()">DOWNLOAD</button>
+                <button class="btn-stop" id="stop-btn" onclick="toggleSensors(false)" disabled>CEASE</button>
+                <button class="btn-util" onclick="clearBuffer()">PURGE</button>
             </div>
         </footer>
     </div>
@@ -153,45 +137,108 @@
     <script>
         let map, polyline, shipMarker, watchId = null;
         let logs = JSON.parse(localStorage.getItem('trek_nav_data')) || [];
-        
-        function init() {
+        let totalDistance = 0;
+
+        function updateStardate() {
+            const now = new Date();
+            const startYear = new Date(now.getFullYear(), 0, 1);
+            const sd = (now.getFullYear() - 1900) * 1000 + (now - startYear) / (1000 * 60 * 60 * 24 * 0.365);
+            document.getElementById('stardate').innerText = `SD ${sd.toFixed(1)}`;
+        }
+
+        function initMap() {
             map = L.map('map', { zoomControl: false, attributionControl: false }).setView([0, 0], 2);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
-            polyline = L.polyline(logs.map(l => [l.lat, l.lng]), { color: '#9cf', weight: 3 }).addTo(map);
-            shipMarker = L.circleMarker([0,0], { radius: 8, color: '#fc0', fillColor: '#fc0', fillOpacity: 0.9 }).addTo(map);
-            if(logs.length > 0) map.setView([logs[logs.length-1].lat, logs[logs.length-1].lng], 14);
+            
+            polyline = L.polyline(logs.map(l => [l.lat, l.lng]), { 
+                color: '#9cf', weight: 3, opacity: 0.8, dashArray: '5, 10' 
+            }).addTo(map);
+            
+            shipMarker = L.circleMarker([0,0], { 
+                radius: 8, color: '#fc0', fillColor: '#fc0', fillOpacity: 0.9, className: '' 
+            }).addTo(map);
+
+            if(logs.length > 0) {
+                map.setView([logs[logs.length-1].lat, logs[logs.length-1].lng], 15);
+                calculateTotalDistance();
+            }
+            updateStardate();
         }
 
         function toggleSensors(state) {
+            if (window.navigator.vibrate) window.navigator.vibrate(20);
             if(state) {
-                watchId = navigator.geolocation.watchPosition(updatePosition, null, { enableHighAccuracy: true });
+                const options = { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 };
+                watchId = navigator.geolocation.watchPosition(updatePosition, handleError, options);
                 document.getElementById('start-btn').disabled = true;
                 document.getElementById('stop-btn').disabled = false;
+                shipMarker.getElement().classList.add('scanning-pulse');
+                document.getElementById('alert-pill').innerText = "ACT";
+                log("LINK ESTABLISHED.");
             } else {
                 navigator.geolocation.clearWatch(watchId);
                 document.getElementById('start-btn').disabled = false;
                 document.getElementById('stop-btn').disabled = true;
+                shipMarker.getElement().classList.remove('scanning-pulse');
+                document.getElementById('alert-pill').innerText = "NRM";
+                log("LINK SEVERED.");
             }
         }
 
         function updatePosition(pos) {
-            const { latitude: lat, longitude: lng, speed, heading } = pos.coords;
-            const latLng = [lat, lng];
+            const { latitude: lat, longitude: lng, speed, heading, accuracy } = pos.coords;
+            const lastPoint = logs.length > 0 ? logs[logs.length - 1] : null;
+            
             logs.push({lat, lng, time: Date.now()});
             localStorage.setItem('trek_nav_data', JSON.stringify(logs));
             
+            const latLng = [lat, lng];
             shipMarker.setLatLng(latLng);
             polyline.addLatLng(latLng);
             map.panTo(latLng);
             
+            // Updates
             document.getElementById('vel-val').innerText = `${(speed || 0).toFixed(1)} M/S`;
-            document.getElementById('head-val').innerText = `${Math.round(heading || 0)}&deg;`;
+            document.getElementById('head-val').innerText = `${Math.round(heading || 0).toString().padStart(3, '0')}&deg;`;
+            document.getElementById('acc-val').innerText = `${Math.max(0, 100 - Math.round(accuracy))}%`;
+            
+            calculateTotalDistance();
+            log(`LOCK: ${lat.toFixed(3)}, ${lng.toFixed(3)}`);
         }
 
-        function saveData() { /* same as before */ }
-        function clearBuffer() { localStorage.removeItem('trek_nav_data'); location.reload(); }
+        function calculateTotalDistance() {
+            totalDistance = 0;
+            for(let i = 1; i < logs.length; i++) {
+                const p1 = L.latLng(logs[i-1].lat, logs[i-1].lng);
+                const p2 = L.latLng(logs[i].lat, logs[i].lng);
+                totalDistance += p1.distanceTo(p2);
+            }
+            document.getElementById('dist-val').innerText = `${(totalDistance / 1000).toFixed(2)} KM`;
+        }
 
-        window.onload = init;
+        function log(msg) {
+            const c = document.getElementById('console');
+            c.innerHTML = `> ${msg}<br>` + c.innerHTML;
+        }
+
+        function handleError(err) { log(`SENSOR ERR: ${err.code}`); }
+
+        function clearBuffer() {
+            if(confirm("PURGE ALL DATA?")) {
+                localStorage.removeItem('trek_nav_data');
+                location.reload();
+            }
+        }
+
+        function saveData() {
+            const blob = new Blob([JSON.stringify(logs, null, 2)], {type: "application/json"});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = `TACTICAL_LOG_${Date.now()}.json`; a.click();
+            log("LOG DOWNLOADED.");
+        }
+
+        window.onload = initMap;
     </script>
 </body>
 </html>
