@@ -3,189 +3,229 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Starfleet Tactical Logger</title>
+    <title>Starfleet Tactical - Advanced Interface</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
-            --lcars-orange: #ff9900;
-            --lcars-gold: #ffcc00;
-            --lcars-violet: #cc99cc;
-            --lcars-blue: #99ccff;
-            --lcars-red: #cc0000;
-            --bg-black: #000000;
+            --lcars-orange: #f90; --lcars-gold: #fc0; --lcars-violet: #c9c;
+            --lcars-blue: #9cf; --lcars-red: #c33; --lcars-sand: #fca;
+            --bg-black: #000;
+        }
+
+        @font-face {
+            font-family: 'LCARS';
+            src: url('https://fonts.cdnfonts.com/s/14353/Antonio-Bold.woff') format('woff');
         }
 
         html, body { 
-            height: 100%; margin: 0; padding: 0; 
-            background: var(--bg-black); 
-            font-family: "Arial Sans", sans-serif; 
-            color: var(--lcars-gold);
-            text-transform: uppercase;
-            overflow: hidden;
+            height: 100%; margin: 0; background: var(--bg-black); 
+            font-family: 'Antonio', sans-serif; color: var(--lcars-gold);
+            text-transform: uppercase; overflow: hidden;
         }
 
-        body { display: flex; flex-direction: column; padding: 10px; box-sizing: border-box; }
+        body { display: grid; grid-template-columns: 80px 1fr; grid-template-rows: 60px 1fr 120px; gap: 10px; padding: 10px; }
 
-        /* LCARS Header Layout */
-        #lcars-header { display: flex; align-items: flex-end; gap: 10px; margin-bottom: 10px; }
-        .elbow {
-            width: 60px; height: 40px;
-            border-top: 15px solid var(--lcars-violet);
-            border-left: 15px solid var(--lcars-violet);
-            border-top-left-radius: 25px;
+        /* Left Sidebar - The "Elbow" */
+        .sidebar { grid-row: 1 / 4; display: flex; flex-direction: column; gap: 5px; }
+        .elbow-top {
+            height: 100px; width: 80px;
+            border-top: 20px solid var(--lcars-violet);
+            border-left: 20px solid var(--lcars-violet);
+            border-top-left-radius: 40px;
         }
-        .bar { flex-grow: 1; height: 15px; background: var(--lcars-violet); margin-bottom: 25px; }
-        .title-text { font-size: 1.5rem; font-weight: bold; padding-bottom: 5px; color: var(--lcars-violet); }
+        .side-bar-block { width: 100%; height: 40px; background: var(--lcars-blue); margin-top: 5px; }
+        .side-bar-block.orange { background: var(--lcars-orange); }
+        .side-bar-block.sand { background: var(--lcars-sand); flex-grow: 1; border-bottom-left-radius: 40px; }
 
-        /* Map Container */
+        /* Header */
+        header { grid-column: 2; display: flex; align-items: center; justify-content: space-between; border-bottom: 20px solid var(--lcars-violet); }
+        .stardate { font-size: 1.2rem; color: var(--lcars-violet); padding-right: 20px; }
+
+        /* Tactical Display */
         #map { 
-            flex: 1; 
-            border: 2px solid var(--lcars-blue); 
-            border-radius: 15px; 
-            margin-bottom: 10px;
-            background: #0b1621;
+            grid-column: 2; border: 1px solid var(--lcars-blue); 
+            border-radius: 0 0 40px 0; background: #050505;
         }
 
-        /* Console Output */
+        /* Bottom Control Deck */
+        .control-deck { grid-column: 2; display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
+        
         #console-output {
-            height: 100px; overflow-y: auto; font-size: 0.7rem;
-            padding: 10px; background: rgba(0,0,0,0.8);
-            border-left: 5px solid var(--lcars-orange);
-            margin-bottom: 10px; font-family: monospace;
+            background: rgba(15, 15, 15, 0.9); border-left: 4px solid var(--lcars-orange);
+            font-family: monospace; font-size: 0.7rem; padding: 10px; overflow-y: auto; color: #fff;
         }
 
-        /* LCARS Buttons */
-        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         button {
-            height: 45px; border: none; font-weight: bold; font-size: 0.9rem;
-            color: #000; cursor: pointer; transition: 0.2s;
-            border-radius: 20px; /* LCARS Pill shape */
+            border: none; padding: 10px; font-family: inherit; font-weight: bold; font-size: 1.1rem;
+            border-radius: 20px; cursor: pointer; color: #000; transition: filter 0.2s;
         }
-        #start-btn { background: var(--lcars-gold); text-align: right; padding-right: 20px; }
-        #stop-btn { background: var(--lcars-orange); text-align: left; padding-left: 20px; }
-        #start-btn:active, #stop-btn:active { opacity: 0.7; }
-        button:disabled { background: #444; color: #888; cursor: not-allowed; }
+        #start-btn { background: var(--lcars-gold); }
+        #stop-btn { background: var(--lcars-orange); }
+        #export-btn { background: var(--lcars-violet); }
+        #clear-btn { background: var(--lcars-red); }
+        button:disabled { filter: brightness(0.3); cursor: not-allowed; }
 
-        /* UI Decorative elements */
-        .status-panel { font-size: 0.8rem; display: flex; justify-content: space-between; margin-bottom: 5px; }
-        .blink { animation: lcars-blink 1s step-end infinite; }
-        @keyframes lcars-blink { 50% { opacity: 0; } }
+        /* Telemetry Overlay */
+        .telemetry {
+            position: absolute; top: 90px; right: 25px; z-index: 1000;
+            background: rgba(0,0,0,0.6); padding: 10px; border-right: 3px solid var(--lcars-blue);
+            text-align: right; pointer-events: none;
+        }
+        .tel-val { color: var(--lcars-blue); font-size: 1.2rem; display: block; }
+
+        /* Scanning Animation */
+        .scan-pulse {
+            position: absolute; width: 100px; height: 100px;
+            border: 2px solid var(--lcars-gold); border-radius: 50%;
+            animation: pulse 2s infinite; pointer-events: none; z-index: 999; display: none;
+        }
+        @keyframes pulse { 0% { transform: scale(0.1); opacity: 1; } 100% { transform: scale(3); opacity: 0; } }
     </style>
 </head>
 <body>
 
-    <div id="lcars-header">
-        <div class="elbow"></div>
-        <div class="title-text">Sensors: Tactical Mapping</div>
-        <div class="bar"></div>
+    <div class="sidebar">
+        <div class="elbow-top"></div>
+        <div class="side-bar-block"></div>
+        <div class="side-bar-block orange"></div>
+        <div class="side-bar-block sand"></div>
     </div>
 
-    <div class="status-panel">
-        <div id="status-text">SYSTEM READY <span class="blink">_</span></div>
-        <div id="counter">TRANSMISSION: 0 UNITS</div>
-    </div>
+    <header>
+        <div style="font-size: 1.8rem; padding-left: 10px;">Tactical Scan: Grid 01</div>
+        <div class="stardate" id="stardate-display">STARDATE 79654.2</div>
+    </header>
 
     <div id="map"></div>
-    
-    <div id="console-output">READY FOR SCAN...</div>
+    <div id="pulse" class="scan-pulse"></div>
 
-    <div class="controls">
-        <button id="start-btn">ENGAGE SCAN</button>
-        <button id="stop-btn" disabled>CEASE LOGGING</button>
+    <div class="telemetry">
+        <span>Sector Distance</span>
+        <span class="tel-val" id="dist-val">0.00 KM</span>
+        <hr style="border:0; border-top:1px solid #333">
+        <span>Coordinates</span>
+        <span class="tel-val" id="coord-val">0.0, 0.0</span>
+    </div>
+
+    <div class="control-deck">
+        <div id="console-output">SYSTEMS NOMINAL... awaiting input...</div>
+        <div class="btn-group">
+            <button id="start-btn" onclick="startTracking()">ENGAGE</button>
+            <button id="stop-btn" onclick="stopTracking()" disabled>HALT</button>
+            <button id="export-btn" onclick="saveData()">DOWNLOAD PADD</button>
+            <button id="clear-btn" onclick="clearData()">WIPE BUFFER</button>
+        </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        const output = document.getElementById('console-output');
-        const startBtn = document.getElementById('start-btn');
-        const stopBtn = document.getElementById('stop-btn');
-        const statusText = document.getElementById('status-text');
-        const counter = document.getElementById('counter');
+        let map, polyline, marker, watchId = null;
+        let pointCloud = JSON.parse(localStorage.getItem('trek_gps_data')) || [];
+        let totalDistance = 0;
 
-        let pointCloud = [];
-        let watchId = null;
-        let map, polyline, marker;
-
-        // Initialize Map (Tactical view)
-        function initMap() {
-            map = L.map('map').setView([0, 0], 2);
+        function init() {
+            // Update Stardate
+            document.getElementById('stardate-display').innerText = `STARDATE ${ (Date.now() / 100000000).toFixed(1) }`;
             
-            // Dark "Starfleet" style tiles (CartoDB Dark Matter)
+            map = L.map('map', { zoomControl: false }).setView([0, 0], 2);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: 'Starfleet Command'
+                attribution: 'STARFLEET COMMAND'
             }).addTo(map);
 
-            polyline = L.polyline([], {color: '#99ccff', weight: 3}).addTo(map);
-            marker = L.circleMarker([0, 0], {
-                radius: 8, color: '#ffcc00', fillColor: '#ffcc00', fillOpacity: 0.8
+            polyline = L.polyline(pointCloud.map(p => [p.lat, p.lng]), {
+                color: '#9cf', weight: 4, opacity: 0.7, dashArray: '5, 10'
             }).addTo(map);
+
+            marker = L.circleMarker([0, 0], {
+                radius: 10, color: '#fc0', fillColor: '#fc0', fillOpacity: 0.8
+            }).addTo(map);
+
+            if (pointCloud.length > 0) {
+                const last = pointCloud[pointCloud.length - 1];
+                map.setView([last.lat, last.lng], 15);
+                calculateTotalDistance();
+            }
         }
 
         function log(msg) {
-            const entry = document.createElement('div');
-            entry.textContent = `[LOG] ${msg}`;
-            output.prepend(entry);
+            const out = document.getElementById('console-output');
+            out.innerHTML = `> ${msg}<br>` + out.innerHTML;
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+
+        function calculateTotalDistance() {
+            totalDistance = 0;
+            for(let i=1; i<pointCloud.length; i++) {
+                totalDistance += calculateDistance(pointCloud[i-1].lat, pointCloud[i-1].lng, pointCloud[i].lat, pointCloud[i].lng);
+            }
+            document.getElementById('dist-val').innerText = totalDistance.toFixed(2) + " KM";
         }
 
         function startTracking() {
-            log("INITIATING SENSOR ARRAY...");
+            log("SENSORS ENGAGED. SCANNING SECTOR...");
+            document.getElementById('pulse').style.display = 'block';
             
-            const options = { enableHighAccuracy: true, timeout: 10000 };
-
             watchId = navigator.geolocation.watchPosition(
                 (pos) => {
-                    const { latitude: lat, longitude: lng, accuracy } = pos.coords;
-                    statusText.innerHTML = `<span style="color:var(--lcars-gold)">SCANNING ACTIVE</span>`;
-                    
+                    const { latitude: lat, longitude: lng } = pos.coords;
                     const latLng = [lat, lng];
-                    pointCloud.push({lat, lng, time: Date.now()});
                     
-                    // Update Map
-                    map.setView(latLng, 16);
+                    pointCloud.push({lat, lng, time: new Date().toISOString()});
+                    localStorage.setItem('trek_gps_data', JSON.stringify(pointCloud));
+
                     marker.setLatLng(latLng);
                     polyline.addLatLng(latLng);
+                    map.panTo(latLng);
 
-                    counter.textContent = `TRANSMISSION: ${pointCloud.length} UNITS`;
-                    log(`COORD UPDATED: ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+                    document.getElementById('coord-val').innerText = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                    calculateTotalDistance();
+                    log(`DATA ACQUIRED: ${lat.toFixed(3)} mark ${lng.toFixed(3)}`);
                 },
-                (err) => {
-                    log(`SENSORS OFFLINE: ${err.message}`);
-                    stopTracking();
-                }, 
-                options
+                (err) => log(`COMMUNICATION INTERFERENCE: ${err.message}`),
+                { enableHighAccuracy: true }
             );
 
-            startBtn.disabled = true;
-            stopBtn.disabled = false;
+            document.getElementById('start-btn').disabled = true;
+            document.getElementById('stop-btn').disabled = false;
         }
 
         function stopTracking() {
-            if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-            watchId = null;
-            
-            statusText.textContent = "LOGGING STANDBY";
-            log("SCAN DATA FINALIZED.");
+            if (watchId) navigator.geolocation.clearWatch(watchId);
+            document.getElementById('pulse').style.display = 'none';
+            document.getElementById('start-btn').disabled = false;
+            document.getElementById('stop-btn').disabled = true;
+            log("SCAN COMPLETED. DATA BUFFER SAVED.");
+        }
 
-            if (pointCloud.length > 0) saveData();
-
-            startBtn.disabled = false;
-            stopBtn.disabled = true;
+        function clearData() {
+            if(confirm("PURGE DATA BUFFER?")) {
+                pointCloud = [];
+                localStorage.removeItem('trek_gps_data');
+                polyline.setLatLngs([]);
+                calculateTotalDistance();
+                log("BUFFER PURGED.");
+            }
         }
 
         function saveData() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(pointCloud));
-            const downloadAnchorNode = document.createElement('a');
-            downloadAnchorNode.setAttribute("href", dataStr);
-            downloadAnchorNode.setAttribute("download", `stardate_${Date.now()}.json`);
-            downloadAnchorNode.click();
-            log("DATA UPLOADED TO PADD.");
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(pointCloud, null, 2));
+            const dl = document.createElement('a');
+            dl.setAttribute("href", dataStr);
+            dl.setAttribute("download", `tactical_scan_${Date.now()}.json`);
+            dl.click();
+            log("ENCRYPTED DATA EXPORTED TO PADD.");
         }
 
-        startBtn.addEventListener('click', startTracking);
-        stopBtn.addEventListener('click', stopTracking);
-        
-        // Boot up
-        initMap();
+        window.onload = init;
     </script>
 </body>
 </html>
