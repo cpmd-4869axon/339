@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Starfleet Tactical PADD - Mk VIII</title>
+    <title>Tactical PADD Mk IX</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
@@ -21,74 +21,67 @@
             height: 100%; margin: 0; background: var(--bg-black); 
             font-family: 'Antonio', sans-serif; color: var(--lcars-gold);
             text-transform: uppercase; overflow: hidden;
-            user-select: none; -webkit-tap-highlight-color: transparent;
+            user-select: none; touch-action: manipulation;
         }
 
-        /* LCARS Elite Grid System */
+        /* Fixed Ratio Grid to prevent Map Squashing */
         .main-frame {
             display: grid;
-            grid-template-columns: 85px 1fr;
-            grid-template-rows: 50px 1fr auto auto;
-            height: 100vh; gap: 6px; padding: 10px; box-sizing: border-box;
+            grid-template-columns: 75px 1fr;
+            grid-template-rows: 45px 1fr auto 50px auto;
+            height: 100vh; height: -webkit-fill-available;
+            gap: 5px; padding: 10px; box-sizing: border-box;
         }
 
         /* Sidebar Architecture */
-        .nav-section { grid-row: 1 / 5; display: flex; flex-direction: column; gap: 4px; }
+        .nav-section { grid-row: 1 / 6; display: flex; flex-direction: column; gap: 4px; }
         .elbow {
-            height: 65px; width: 100%;
-            border-top: 16px solid var(--lcars-violet);
-            border-left: 20px solid var(--lcars-violet);
-            border-top-left-radius: 40px;
-            position: relative;
+            height: 55px; width: 100%;
+            border-top: 14px solid var(--lcars-violet);
+            border-left: 18px solid var(--lcars-violet);
+            border-top-left-radius: 35px;
         }
-        .nav-pill { height: 35px; background: var(--lcars-blue); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: #000; font-weight: bold; }
+        .nav-pill { height: 32px; background: var(--lcars-blue); display: flex; align-items: center; justify-content: center; font-size: 0.7rem; color: #000; font-weight: bold; }
         .nav-pill.orange { background: var(--lcars-orange); }
-        .nav-pill.sand { flex-grow: 1; border-bottom-left-radius: 40px; background: var(--lcars-sand); align-items: flex-end; padding-bottom: 20px; }
+        .nav-pill.sand { flex-grow: 1; border-bottom-left-radius: 35px; background: var(--lcars-sand); }
 
         header { 
-            grid-column: 2; display: flex; justify-content: space-between; align-items: flex-end;
-            border-bottom: 12px solid var(--lcars-violet); padding-bottom: 4px;
+            grid-column: 2; display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 10px solid var(--lcars-violet);
         }
 
         #map { 
             grid-column: 2; border: 1px solid var(--lcars-blue); 
-            background: #050505; border-radius: 4px; filter: contrast(1.1) brightness(0.9);
+            background: #020202; border-radius: 2px;
+            min-height: 200px; /* Prevents sliver map */
         }
 
-        /* Telemetry Readouts */
         .sensor-readout {
-            grid-column: 2; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
-            background: rgba(15,15,15,0.95); border-left: 5px solid var(--lcars-sand);
-            padding: 10px; font-variant-numeric: tabular-nums;
+            grid-column: 2; display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+            background: rgba(15,15,15,0.9); border-left: 5px solid var(--lcars-sand);
+            padding: 8px;
         }
-        .data-box { border-bottom: 1px solid #333; }
-        .data-label { color: var(--lcars-blue); font-size: 0.65rem; display: block; }
-        .data-value { font-size: 1.3rem; display: block; letter-spacing: 1px; }
+        .data-box { border-bottom: 1px solid #333; height: 35px; }
+        .data-label { color: var(--lcars-blue); font-size: 0.55rem; display: block; }
+        .data-value { font-size: 1.1rem; display: block; }
 
-        footer { grid-column: 2; display: flex; flex-direction: column; gap: 6px; }
+        footer { grid-column: 2; display: flex; flex-direction: column; gap: 4px; }
         #console {
-            height: 50px; background: #000; border: 1px solid var(--lcars-orange);
-            font-family: 'Courier New', monospace; font-size: 0.7rem; padding: 6px; 
-            overflow: hidden; color: #0f0; border-radius: 4px;
+            height: 40px; background: #000; border: 1px solid var(--lcars-orange);
+            font-family: monospace; font-size: 0.6rem; padding: 4px; color: #0f0; overflow: hidden;
         }
 
-        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
         button {
-            border: none; padding: 14px 0; font-family: inherit; font-weight: bold;
-            font-size: 1.1rem; border-radius: 22px 4px 4px 22px; cursor: pointer;
-            color: #000; transition: transform 0.05s, filter 0.1s;
+            border: none; padding: 12px 0; font-family: inherit; font-weight: bold;
+            font-size: 1rem; border-radius: 20px 4px 4px 20px; cursor: pointer;
+            color: #000; background: var(--lcars-gold);
         }
-        button:active { transform: scale(0.96); filter: brightness(1.4); }
-        .btn-start { background: var(--lcars-gold); }
         .btn-stop { background: var(--lcars-orange); }
-        .btn-util { background: var(--lcars-violet); border-radius: 4px 22px 22px 4px; }
+        .btn-util { background: var(--lcars-violet); border-radius: 4px 20px 20px 4px; }
 
-        /* Tactical States */
         .red-alert { animation: red-flash 1s infinite; }
-        @keyframes red-flash { 0%, 100% { background: #000; } 50% { background: rgba(200, 0, 0, 0.25); } }
-        
-        .map-pulse { animation: map-scan 3s infinite linear; }
-        @keyframes map-scan { 0% { opacity: 0.8; } 50% { opacity: 1; } 100% { opacity: 0.8; } }
+        @keyframes red-flash { 50% { background: rgba(255, 0, 0, 0.15); } }
     </style>
 </head>
 <body id="hull">
@@ -96,31 +89,32 @@
     <div class="main-frame">
         <nav class="nav-section">
             <div class="elbow"></div>
-            <div class="nav-pill">NAV-01</div>
+            <div class="nav-pill">07-2104</div>
             <div class="nav-pill orange" id="status-pill">STBY</div>
-            <div class="nav-pill sand">LCARS</div>
+            <div class="nav-pill sand"></div>
         </nav>
 
         <header>
-            <div style="font-size: 1.5rem; letter-spacing: 2px;">Tactical PADD</div>
-            <div id="stardate" style="font-size: 0.85rem; color: var(--lcars-blue);">SD 00000.0</div>
+            <div style="font-size: 1.2rem;">Tactical Navigation</div>
+            <div id="stardate" style="font-size: 0.7rem; color: var(--lcars-blue);">SD 177241.2</div>
         </header>
 
         <div id="map"></div>
 
         <section class="sensor-readout">
-            <div class="data-box"><span class="data-label">VELOCITY</span><span class="data-value" id="vel-val">0.0 M/S</span></div>
+            <div class="data-box"><span class="data-label">IMPULSE</span><span class="data-value" id="vel-val">0.0 M/S</span></div>
             <div class="data-box"><span class="data-label">BEARING</span><span class="data-value" id="head-val">000&deg;</span></div>
             <div class="data-box"><span class="data-label">SECTOR DIST</span><span class="data-value" id="dist-val">0.00 KM</span></div>
             <div class="data-box"><span class="data-label">SENSORS</span><span class="data-value" id="acc-val">NOMINAL</span></div>
         </section>
 
+        <div id="console">> TRICORDER READY...</div>
+
         <footer>
-            <div id="console">> TRICORDER LINK IDLE...</div>
             <div class="btn-grid">
-                <button class="btn-start" id="start-btn" onclick="toggleTracking(true)">ENGAGE</button>
+                <button id="start-btn" onclick="toggleTracking(true)">ENGAGE</button>
                 <button class="btn-util" onclick="downloadLogs()">DOWNLOAD</button>
-                <button class="btn-stop" id="stop-btn" onclick="toggleTracking(false)" disabled>CEASE</button>
+                <button class="btn-stop" id="stop-btn" onclick="toggleTracking(false)" disabled>HALT</button>
                 <button class="btn-util" onclick="purgeMemory()">PURGE</button>
             </div>
         </footer>
@@ -131,12 +125,10 @@
         let map, polyline, shipMarker, trackingInterval = null;
         let logs = JSON.parse(localStorage.getItem('trek_nav_data')) || [];
         
-        // --- High Frequency Audio ---
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         function beep(f, d) {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
             const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-            o.type = 'sine'; o.frequency.value = f; g.gain.value = 0.1;
+            o.frequency.value = f; g.gain.value = 0.05;
             o.connect(g); g.connect(audioCtx.destination);
             o.start(); g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + d);
             o.stop(audioCtx.currentTime + d);
@@ -145,79 +137,66 @@
         function init() {
             map = L.map('map', { zoomControl: false, attributionControl: false }).setView([0, 0], 2);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
-            polyline = L.polyline(logs.map(l => [l.lat, l.lng]), { color: '#9cf', weight: 3, opacity: 0.7 }).addTo(map);
-            shipMarker = L.circleMarker([0,0], { radius: 7, color: '#fc0', fillColor: '#fc0', fillOpacity: 0.9 }).addTo(map);
+            polyline = L.polyline(logs.map(l => [l.lat, l.lng]), { color: '#9cf', weight: 3 }).addTo(map);
+            shipMarker = L.circleMarker([0,0], { radius: 6, color: '#fc0', fillColor: '#fc0', fillOpacity: 1 }).addTo(map);
             
             if(logs.length > 0) {
-                const last = logs[logs.length-1];
-                map.setView([last.lat, last.lng], 16);
+                map.setView([logs[logs.length-1].lat, logs[logs.length-1].lng], 16);
                 updateDisplay();
             }
-            setInterval(updateStardate, 5000);
-            updateStardate();
-        }
-
-        function updateStardate() {
-            const now = new Date();
-            const sd = (now.getFullYear() - 1900) * 1000 + (now.getMonth() * 83) + (now.getDate() * 2.7);
-            document.getElementById('stardate').innerText = `SD ${sd.toFixed(1)}`;
         }
 
         function toggleTracking(state) {
-            beep(state ? 880 : 440, 0.15);
-            if (window.navigator.vibrate) window.navigator.vibrate(state ? [40, 30] : 20);
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            beep(state ? 880 : 440, 0.1);
 
             if(state) {
-                // Elite 1-second Polling Engine
+                // Fixed Logic: Warm up the sensor to prevent Failure Code 3
+                log("SENSORS WARMING UP...");
                 trackingInterval = setInterval(() => {
-                    navigator.geolocation.getCurrentPosition(processPosition, (e) => log(`SENSOR FAILURE: ${e.code}`), { 
-                        enableHighAccuracy: true, timeout: 900 
+                    navigator.geolocation.getCurrentPosition(processPosition, (e) => {
+                        log(`ERROR CODE: ${e.code}`); // Failure 3 = Timeout
+                    }, { 
+                        enableHighAccuracy: true, 
+                        timeout: 5000, // Increased timeout for better stability
+                        maximumAge: 0 
                     });
                 }, 1000);
 
                 document.getElementById('start-btn').disabled = true;
                 document.getElementById('stop-btn').disabled = false;
                 document.getElementById('status-pill').innerText = "LOCK";
-                document.getElementById('map').classList.add('map-pulse');
-                log("SENSORS ENGAGED (1Hz)");
             } else {
                 clearInterval(trackingInterval);
                 document.getElementById('start-btn').disabled = false;
                 document.getElementById('stop-btn').disabled = true;
                 document.getElementById('status-pill').innerText = "STBY";
-                document.getElementById('map').classList.remove('map-pulse');
                 document.getElementById('hull').classList.remove('red-alert');
-                log("SENSORS OFFLINE.");
             }
         }
 
         function processPosition(pos) {
             const { latitude: lat, longitude: lng, speed, heading, accuracy } = pos.coords;
-            const current = { lat, lng, time: Date.now() };
-            
-            logs.push(current);
-            if(logs.length > 5000) logs.shift(); // Memory management
+            logs.push({lat, lng, time: Date.now()});
+            if(logs.length > 2000) logs.shift();
             localStorage.setItem('trek_nav_data', JSON.stringify(logs));
             
-            shipMarker.setLatLng([lat, lng]);
-            polyline.addLatLng([lat, lng]);
-            map.panTo([lat, lng]);
+            const latLng = [lat, lng];
+            shipMarker.setLatLng(latLng);
+            polyline.addLatLng(latLng);
+            map.panTo(latLng);
 
-            // Advanced Telemetry UI
             document.getElementById('vel-val').innerText = `${(speed || 0).toFixed(1)} M/S`;
             document.getElementById('head-val').innerText = `${Math.round(heading || 0).toString().padStart(3, '0')}&deg;`;
             
             const accField = document.getElementById('acc-val');
-            if (accuracy > 20) {
+            if (accuracy > 30) {
                 accField.innerText = "DEGRADED";
-                accField.style.color = "var(--lcars-red)";
                 document.getElementById('hull').classList.add('red-alert');
             } else {
                 accField.innerText = "NOMINAL";
-                accField.style.color = "var(--lcars-blue)";
                 document.getElementById('hull').classList.remove('red-alert');
             }
-            
             updateDisplay();
             log(`LOCK: ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
         }
@@ -230,25 +209,15 @@
             document.getElementById('dist-val').innerText = `${(dist/1000).toFixed(2)} KM`;
         }
 
-        function log(msg) {
-            const c = document.getElementById('console');
-            c.innerText = `> ${msg}`;
-        }
+        function log(msg) { document.getElementById('console').innerText = `> ${msg}`; }
 
         function purgeMemory() {
-            beep(220, 0.3);
-            if(confirm("PURGE TACTICAL BUFFER?")) {
-                localStorage.clear();
-                location.reload();
-            }
+            if(confirm("PURGE DATA?")) { localStorage.clear(); location.reload(); }
         }
 
         function downloadLogs() {
-            beep(1200, 0.05);
             const data = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(logs));
-            const a = document.createElement('a');
-            a.setAttribute("href", data); a.setAttribute("download", `NAV_LOG_${Date.now()}.json`);
-            a.click();
+            const a = document.createElement('a'); a.href = data; a.download = `LOG_${Date.now()}.json`; a.click();
         }
 
         window.onload = init;
