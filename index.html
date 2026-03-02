@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Starfleet Tactical - Advanced Interface</title>
+    <title>Starfleet Tactical PADD - Mk IV</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
             --lcars-orange: #f90; --lcars-gold: #fc0; --lcars-violet: #c9c;
             --lcars-blue: #9cf; --lcars-red: #c33; --lcars-sand: #fca;
-            --bg-black: #000;
+            --bg-black: #000; --alert-red: rgba(204, 51, 51, 0.2);
         }
 
         @font-face {
-            font-family: 'LCARS';
+            font-family: 'Antonio';
             src: url('https://fonts.cdnfonts.com/s/14353/Antonio-Bold.woff') format('woff');
         }
 
@@ -21,208 +21,246 @@
             height: 100%; margin: 0; background: var(--bg-black); 
             font-family: 'Antonio', sans-serif; color: var(--lcars-gold);
             text-transform: uppercase; overflow: hidden;
+            transition: background 0.5s ease;
         }
 
-        body { display: grid; grid-template-columns: 80px 1fr; grid-template-rows: 60px 1fr 120px; gap: 10px; padding: 10px; }
-
-        /* Left Sidebar - The "Elbow" */
-        .sidebar { grid-row: 1 / 4; display: flex; flex-direction: column; gap: 5px; }
-        .elbow-top {
-            height: 100px; width: 80px;
-            border-top: 20px solid var(--lcars-violet);
-            border-left: 20px solid var(--lcars-violet);
-            border-top-left-radius: 40px;
+        /* LCARS Layout Engine */
+        .main-frame {
+            display: grid;
+            grid-template-columns: 140px 1fr 200px;
+            grid-template-rows: 60px 1fr 140px;
+            height: 100vh;
+            gap: 10px;
+            padding: 10px;
+            box-sizing: border-box;
         }
-        .side-bar-block { width: 100%; height: 40px; background: var(--lcars-blue); margin-top: 5px; }
-        .side-bar-block.orange { background: var(--lcars-orange); }
-        .side-bar-block.sand { background: var(--lcars-sand); flex-grow: 1; border-bottom-left-radius: 40px; }
+
+        /* Sidebar / Elbow */
+        .nav-section { grid-row: 1 / 4; display: flex; flex-direction: column; gap: 4px; }
+        .elbow {
+            height: 120px; width: 140px;
+            border-top: 25px solid var(--lcars-violet);
+            border-left: 35px solid var(--lcars-violet);
+            border-top-left-radius: 60px;
+            position: relative;
+        }
+        .elbow::after { content: "07-2104"; position: absolute; top: -20px; left: 45px; font-size: 0.8rem; }
+        
+        .nav-pill { height: 35px; background: var(--lcars-blue); border-radius: 0; position: relative; cursor: pointer; }
+        .nav-pill.orange { background: var(--lcars-orange); }
+        .nav-pill.sand { background: var(--lcars-sand); flex-grow: 1; border-bottom-left-radius: 60px; }
 
         /* Header */
-        header { grid-column: 2; display: flex; align-items: center; justify-content: space-between; border-bottom: 20px solid var(--lcars-violet); }
-        .stardate { font-size: 1.2rem; color: var(--lcars-violet); padding-right: 20px; }
+        header { 
+            grid-column: 2 / 4; display: flex; align-items: flex-end; 
+            border-bottom: 18px solid var(--lcars-violet); 
+            padding-bottom: 5px; justify-content: space-between;
+        }
 
-        /* Tactical Display */
+        /* Tactical Center */
         #map { 
-            grid-column: 2; border: 1px solid var(--lcars-blue); 
-            border-radius: 0 0 40px 0; background: #050505;
+            grid-column: 2; border: 2px solid var(--lcars-blue); 
+            background: #020202; position: relative;
         }
 
-        /* Bottom Control Deck */
-        .control-deck { grid-column: 2; display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
+        /* Right Telemetry Column */
+        .sensor-readout {
+            grid-column: 3; display: flex; flex-direction: column; gap: 10px;
+            background: rgba(15,15,15,0.8); border-left: 2px solid var(--lcars-sand);
+            padding: 15px; font-size: 0.9rem;
+        }
+        .data-box { border-bottom: 1px solid #333; padding-bottom: 5px; }
+        .data-label { color: var(--lcars-blue); font-size: 0.7rem; display: block; }
+        .data-value { font-size: 1.4rem; display: block; letter-spacing: 1px; }
+
+        /* Footer Controls */
+        footer { grid-column: 2 / 4; display: grid; grid-template-columns: 1fr 350px; gap: 10px; }
         
-        #console-output {
-            background: rgba(15, 15, 15, 0.9); border-left: 4px solid var(--lcars-orange);
-            font-family: monospace; font-size: 0.7rem; padding: 10px; overflow-y: auto; color: #fff;
+        #console {
+            background: #080808; border-top: 2px solid var(--lcars-orange);
+            font-family: 'Courier New', monospace; font-size: 0.75rem; 
+            padding: 10px; overflow-y: auto; color: #0f0;
         }
 
-        .btn-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
         button {
-            border: none; padding: 10px; font-family: inherit; font-weight: bold; font-size: 1.1rem;
-            border-radius: 20px; cursor: pointer; color: #000; transition: filter 0.2s;
+            border: none; padding: 12px; font-family: inherit; font-weight: bold;
+            font-size: 1rem; border-radius: 25px 5px 5px 25px; cursor: pointer;
+            color: #000; text-align: right; padding-right: 20px;
         }
-        #start-btn { background: var(--lcars-gold); }
-        #stop-btn { background: var(--lcars-orange); }
-        #export-btn { background: var(--lcars-violet); }
-        #clear-btn { background: var(--lcars-red); }
-        button:disabled { filter: brightness(0.3); cursor: not-allowed; }
+        .btn-start { background: var(--lcars-gold); }
+        .btn-stop { background: var(--lcars-orange); }
+        .btn-util { background: var(--lcars-violet); border-radius: 5px 25px 25px 5px; text-align: left; padding-left: 20px; }
 
-        /* Telemetry Overlay */
-        .telemetry {
-            position: absolute; top: 90px; right: 25px; z-index: 1000;
-            background: rgba(0,0,0,0.6); padding: 10px; border-right: 3px solid var(--lcars-blue);
-            text-align: right; pointer-events: none;
-        }
-        .tel-val { color: var(--lcars-blue); font-size: 1.2rem; display: block; }
+        /* Alert Overlay */
+        .red-alert-bg { background-color: var(--alert-red) !important; animation: flash 1s infinite; }
+        @keyframes flash { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
-        /* Scanning Animation */
-        .scan-pulse {
-            position: absolute; width: 100px; height: 100px;
-            border: 2px solid var(--lcars-gold); border-radius: 50%;
-            animation: pulse 2s infinite; pointer-events: none; z-index: 999; display: none;
+        /* Tactical Overlay */
+        .scan-line {
+            position: absolute; top: 0; left: 0; width: 100%; height: 2px;
+            background: rgba(153, 204, 255, 0.2); animation: scan 4s linear infinite;
+            z-index: 1000; pointer-events: none;
         }
-        @keyframes pulse { 0% { transform: scale(0.1); opacity: 1; } 100% { transform: scale(3); opacity: 0; } }
+        @keyframes scan { from { top: 0; } to { top: 100%; } }
     </style>
 </head>
-<body>
+<body id="hull">
 
-    <div class="sidebar">
-        <div class="elbow-top"></div>
-        <div class="side-bar-block"></div>
-        <div class="side-bar-block orange"></div>
-        <div class="side-bar-block sand"></div>
-    </div>
-
-    <header>
-        <div style="font-size: 1.8rem; padding-left: 10px;">Tactical Scan: Grid 01</div>
-        <div class="stardate" id="stardate-display">STARDATE 79654.2</div>
-    </header>
-
-    <div id="map"></div>
-    <div id="pulse" class="scan-pulse"></div>
-
-    <div class="telemetry">
-        <span>Sector Distance</span>
-        <span class="tel-val" id="dist-val">0.00 KM</span>
-        <hr style="border:0; border-top:1px solid #333">
-        <span>Coordinates</span>
-        <span class="tel-val" id="coord-val">0.0, 0.0</span>
-    </div>
-
-    <div class="control-deck">
-        <div id="console-output">SYSTEMS NOMINAL... awaiting input...</div>
-        <div class="btn-group">
-            <button id="start-btn" onclick="startTracking()">ENGAGE</button>
-            <button id="stop-btn" onclick="stopTracking()" disabled>HALT</button>
-            <button id="export-btn" onclick="saveData()">DOWNLOAD PADD</button>
-            <button id="clear-btn" onclick="clearData()">WIPE BUFFER</button>
+    <div class="main-frame">
+        <div class="nav-section">
+            <div class="elbow"></div>
+            <div class="nav-pill">402</div>
+            <div class="nav-pill orange">901</div>
+            <div class="nav-pill">772</div>
+            <div class="nav-pill sand"></div>
         </div>
+
+        <header>
+            <div style="font-size: 2rem; padding-left: 10px;">Tactical Navigation <span style="font-size: 0.8rem; color: var(--lcars-blue);">Subspace-Linked</span></div>
+            <div id="stardate" style="padding-right: 10px;">STARDATE 47634.4</div>
+        </header>
+
+        <div id="map">
+            <div class="scan-line"></div>
+        </div>
+
+        <div class="sensor-readout">
+            <div class="data-box">
+                <span class="data-label">Velocity (Impulse)</span>
+                <span class="data-value" id="vel-val">0.0 m/s</span>
+            </div>
+            <div class="data-box">
+                <span class="data-label">Heading (Bearing)</span>
+                <span class="data-value" id="head-val">000°</span>
+            </div>
+            <div class="data-box">
+                <span class="data-label">Distance Traveled</span>
+                <span class="data-value" id="dist-val">0.00 km</span>
+            </div>
+            <div class="data-box">
+                <span class="data-label">Sensor Accuracy</span>
+                <span class="data-value" id="acc-val">NOMINAL</span>
+            </div>
+        </div>
+
+        <footer>
+            <div id="console">> Awaiting commands from Command...</div>
+            <div class="btn-grid">
+                <button class="btn-start" id="start-btn" onclick="toggleSensors(true)">Engage</button>
+                <button class="btn-util" onclick="saveData()">Export PADD</button>
+                <button class="btn-stop" id="stop-btn" onclick="toggleSensors(false)" disabled>Disengage</button>
+                <button class="btn-util" onclick="clearBuffer()">Wipe Memory</button>
+            </div>
+        </footer>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        let map, polyline, marker, watchId = null;
-        let pointCloud = JSON.parse(localStorage.getItem('trek_gps_data')) || [];
-        let totalDistance = 0;
-
+        let map, polyline, shipMarker, watchId = null;
+        let logs = JSON.parse(localStorage.getItem('trek_nav_data')) || [];
+        
         function init() {
             // Update Stardate
-            document.getElementById('stardate-display').innerText = `STARDATE ${ (Date.now() / 100000000).toFixed(1) }`;
-            
-            map = L.map('map', { zoomControl: false }).setView([0, 0], 2);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: 'STARFLEET COMMAND'
+            setInterval(() => {
+                const sd = (Date.now() / 10000000).toFixed(1);
+                document.getElementById('stardate').innerText = `STARDATE ${sd}`;
+            }, 5000);
+
+            map = L.map('map', { zoomControl: false, attributionControl: false }).setView([0, 0], 2);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(map);
+
+            polyline = L.polyline(logs.map(l => [l.lat, l.lng]), {
+                color: '#9cf', weight: 3, opacity: 0.6, dashArray: '10, 10'
             }).addTo(map);
 
-            polyline = L.polyline(pointCloud.map(p => [p.lat, p.lng]), {
-                color: '#9cf', weight: 4, opacity: 0.7, dashArray: '5, 10'
-            }).addTo(map);
+            shipMarker = L.circleMarker([0,0], { radius: 8, color: '#fc0', fillColor: '#fc0', fillOpacity: 0.9 }).addTo(map);
 
-            marker = L.circleMarker([0, 0], {
-                radius: 10, color: '#fc0', fillColor: '#fc0', fillOpacity: 0.8
-            }).addTo(map);
+            if(logs.length > 0) processTelemetry(logs[logs.length-1], logs[logs.length-2]);
+        }
 
-            if (pointCloud.length > 0) {
-                const last = pointCloud[pointCloud.length - 1];
-                map.setView([last.lat, last.lng], 15);
-                calculateTotalDistance();
+        function logToConsole(msg) {
+            const c = document.getElementById('console');
+            c.innerHTML = `> ${msg}<br>` + c.innerHTML;
+        }
+
+        function toggleSensors(state) {
+            if(state) {
+                logToConsole("Engaging sensor array...");
+                watchId = navigator.geolocation.watchPosition(updatePosition, handleError, { enableHighAccuracy: true });
+                document.getElementById('start-btn').disabled = true;
+                document.getElementById('stop-btn').disabled = false;
+            } else {
+                navigator.geolocation.clearWatch(watchId);
+                logToConsole("Sensors offline.");
+                document.getElementById('start-btn').disabled = false;
+                document.getElementById('stop-btn').disabled = true;
+                document.getElementById('hull').classList.remove('red-alert-bg');
             }
         }
 
-        function log(msg) {
-            const out = document.getElementById('console-output');
-            out.innerHTML = `> ${msg}<br>` + out.innerHTML;
-        }
-
-        function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371; // km
-            const dLat = (lat2 - lat1) * Math.PI / 180;
-            const dLon = (lon2 - lon1) * Math.PI / 180;
-            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
-            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        }
-
-        function calculateTotalDistance() {
-            totalDistance = 0;
-            for(let i=1; i<pointCloud.length; i++) {
-                totalDistance += calculateDistance(pointCloud[i-1].lat, pointCloud[i-1].lng, pointCloud[i].lat, pointCloud[i].lng);
-            }
-            document.getElementById('dist-val').innerText = totalDistance.toFixed(2) + " KM";
-        }
-
-        function startTracking() {
-            log("SENSORS ENGAGED. SCANNING SECTOR...");
-            document.getElementById('pulse').style.display = 'block';
+        function updatePosition(pos) {
+            const { latitude: lat, longitude: lng, accuracy, speed, heading } = pos.coords;
+            const current = { lat, lng, time: Date.now() };
             
-            watchId = navigator.geolocation.watchPosition(
-                (pos) => {
-                    const { latitude: lat, longitude: lng } = pos.coords;
-                    const latLng = [lat, lng];
-                    
-                    pointCloud.push({lat, lng, time: new Date().toISOString()});
-                    localStorage.setItem('trek_gps_data', JSON.stringify(pointCloud));
+            // Red Alert Logic (Low Accuracy)
+            const hull = document.getElementById('hull');
+            const accVal = document.getElementById('acc-val');
+            if (accuracy > 20) {
+                hull.classList.add('red-alert-bg');
+                accVal.innerText = "DEGRADED";
+                accVal.style.color = "var(--lcars-red)";
+            } else {
+                hull.classList.remove('red-alert-bg');
+                accVal.innerText = "NOMINAL";
+                accVal.style.color = "var(--lcars-blue)";
+            }
 
-                    marker.setLatLng(latLng);
-                    polyline.addLatLng(latLng);
-                    map.panTo(latLng);
+            logs.push(current);
+            localStorage.setItem('trek_nav_data', JSON.stringify(logs));
 
-                    document.getElementById('coord-val').innerText = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-                    calculateTotalDistance();
-                    log(`DATA ACQUIRED: ${lat.toFixed(3)} mark ${lng.toFixed(3)}`);
-                },
-                (err) => log(`COMMUNICATION INTERFERENCE: ${err.message}`),
-                { enableHighAccuracy: true }
-            );
+            // Update Map
+            const latLng = [lat, lng];
+            shipMarker.setLatLng(latLng);
+            polyline.addLatLng(latLng);
+            map.panTo(latLng);
 
-            document.getElementById('start-btn').disabled = true;
-            document.getElementById('stop-btn').disabled = false;
+            // UI Telemetry
+            document.getElementById('vel-val').innerText = `${(speed || 0).toFixed(1)} m/s`;
+            document.getElementById('head-val').innerText = `${Math.round(heading || 0).toString().padStart(3, '0')}°`;
+            
+            processTelemetry(current, logs[logs.length-2]);
+            logToConsole(`Coord Lock: ${lat.toFixed(4)} / ${lng.toFixed(4)}`);
         }
 
-        function stopTracking() {
-            if (watchId) navigator.geolocation.clearWatch(watchId);
-            document.getElementById('pulse').style.display = 'none';
-            document.getElementById('start-btn').disabled = false;
-            document.getElementById('stop-btn').disabled = true;
-            log("SCAN COMPLETED. DATA BUFFER SAVED.");
+        function processTelemetry(current, last) {
+            if(!last) return;
+            // Distance calculation
+            const R = 6371; 
+            const dLat = (current.lat - last.lat) * Math.PI / 180;
+            const dLon = (current.lng - last.lng) * Math.PI / 180;
+            const a = Math.sin(dLat/2)**2 + Math.cos(last.lat*Math.PI/180)*Math.cos(current.lat*Math.PI/180)*Math.sin(dLon/2)**2;
+            const d = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            
+            let totalDist = parseFloat(document.getElementById('dist-val').innerText) + d;
+            document.getElementById('dist-val').innerText = `${totalDist.toFixed(2)} km`;
         }
 
-        function clearData() {
-            if(confirm("PURGE DATA BUFFER?")) {
-                pointCloud = [];
-                localStorage.removeItem('trek_gps_data');
+        function handleError(err) { logToConsole(`Comms Error: ${err.message.toUpperCase()}`); }
+
+        function clearBuffer() {
+            if(confirm("Confirm Memory Purge?")) {
+                logs = [];
+                localStorage.removeItem('trek_nav_data');
                 polyline.setLatLngs([]);
-                calculateTotalDistance();
-                log("BUFFER PURGED.");
+                location.reload();
             }
         }
 
         function saveData() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(pointCloud, null, 2));
-            const dl = document.createElement('a');
-            dl.setAttribute("href", dataStr);
-            dl.setAttribute("download", `tactical_scan_${Date.now()}.json`);
-            dl.click();
-            log("ENCRYPTED DATA EXPORTED TO PADD.");
+            const data = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(logs));
+            const a = document.createElement('a');
+            a.href = data; a.download = `LOG_${Date.now()}.json`; a.click();
         }
 
         window.onload = init;
