@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Starfleet Tactical Logger</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        :root {
+            --lcars-orange: #ff9900;
+            --lcars-gold: #ffcc00;
+            --lcars-violet: #cc99cc;
+            --lcars-blue: #99ccff;
+            --lcars-red: #cc0000;
+            --bg-black: #000000;
+        }
+
+        html, body { 
+            height: 100%; margin: 0; padding: 0; 
+            background: var(--bg-black); 
+            font-family: "Arial Sans", sans-serif; 
+            color: var(--lcars-gold);
+            text-transform: uppercase;
+            overflow: hidden;
+        }
+
+        body { display: flex; flex-direction: column; padding: 10px; box-sizing: border-box; }
+
+        /* LCARS Header Layout */
+        #lcars-header { display: flex; align-items: flex-end; gap: 10px; margin-bottom: 10px; }
+        .elbow {
+            width: 60px; height: 40px;
+            border-top: 15px solid var(--lcars-violet);
+            border-left: 15px solid var(--lcars-violet);
+            border-top-left-radius: 25px;
+        }
+        .bar { flex-grow: 1; height: 15px; background: var(--lcars-violet); margin-bottom: 25px; }
+        .title-text { font-size: 1.5rem; font-weight: bold; padding-bottom: 5px; color: var(--lcars-violet); }
+
+        /* Map Container */
+        #map { 
+            flex: 1; 
+            border: 2px solid var(--lcars-blue); 
+            border-radius: 15px; 
+            margin-bottom: 10px;
+            background: #0b1621;
+        }
+
+        /* Console Output */
+        #console-output {
+            height: 100px; overflow-y: auto; font-size: 0.7rem;
+            padding: 10px; background: rgba(0,0,0,0.8);
+            border-left: 5px solid var(--lcars-orange);
+            margin-bottom: 10px; font-family: monospace;
+        }
+
+        /* LCARS Buttons */
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        button {
+            height: 45px; border: none; font-weight: bold; font-size: 0.9rem;
+            color: #000; cursor: pointer; transition: 0.2s;
+            border-radius: 20px; /* LCARS Pill shape */
+        }
+        #start-btn { background: var(--lcars-gold); text-align: right; padding-right: 20px; }
+        #stop-btn { background: var(--lcars-orange); text-align: left; padding-left: 20px; }
+        #start-btn:active, #stop-btn:active { opacity: 0.7; }
+        button:disabled { background: #444; color: #888; cursor: not-allowed; }
+
+        /* UI Decorative elements */
+        .status-panel { font-size: 0.8rem; display: flex; justify-content: space-between; margin-bottom: 5px; }
+        .blink { animation: lcars-blink 1s step-end infinite; }
+        @keyframes lcars-blink { 50% { opacity: 0; } }
+    </style>
+</head>
+<body>
+
+    <div id="lcars-header">
+        <div class="elbow"></div>
+        <div class="title-text">Sensors: Tactical Mapping</div>
+        <div class="bar"></div>
+    </div>
+
+    <div class="status-panel">
+        <div id="status-text">SYSTEM READY <span class="blink">_</span></div>
+        <div id="counter">TRANSMISSION: 0 UNITS</div>
+    </div>
+
+    <div id="map"></div>
+    
+    <div id="console-output">READY FOR SCAN...</div>
+
+    <div class="controls">
+        <button id="start-btn">ENGAGE SCAN</button>
+        <button id="stop-btn" disabled>CEASE LOGGING</button>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const output = document.getElementById('console-output');
+        const startBtn = document.getElementById('start-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        const statusText = document.getElementById('status-text');
+        const counter = document.getElementById('counter');
+
+        let pointCloud = [];
+        let watchId = null;
+        let map, polyline, marker;
+
+        // Initialize Map (Tactical view)
+        function initMap() {
+            map = L.map('map').setView([0, 0], 2);
+            
+            // Dark "Starfleet" style tiles (CartoDB Dark Matter)
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: 'Starfleet Command'
+            }).addTo(map);
+
+            polyline = L.polyline([], {color: '#99ccff', weight: 3}).addTo(map);
+            marker = L.circleMarker([0, 0], {
+                radius: 8, color: '#ffcc00', fillColor: '#ffcc00', fillOpacity: 0.8
+            }).addTo(map);
+        }
+
+        function log(msg) {
+            const entry = document.createElement('div');
+            entry.textContent = `[LOG] ${msg}`;
+            output.prepend(entry);
+        }
+
+        function startTracking() {
+            log("INITIATING SENSOR ARRAY...");
+            
+            const options = { enableHighAccuracy: true, timeout: 10000 };
+
+            watchId = navigator.geolocation.watchPosition(
+                (pos) => {
+                    const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+                    statusText.innerHTML = `<span style="color:var(--lcars-gold)">SCANNING ACTIVE</span>`;
+                    
+                    const latLng = [lat, lng];
+                    pointCloud.push({lat, lng, time: Date.now()});
+                    
+                    // Update Map
+                    map.setView(latLng, 16);
+                    marker.setLatLng(latLng);
+                    polyline.addLatLng(latLng);
+
+                    counter.textContent = `TRANSMISSION: ${pointCloud.length} UNITS`;
+                    log(`COORD UPDATED: ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+                },
+                (err) => {
+                    log(`SENSORS OFFLINE: ${err.message}`);
+                    stopTracking();
+                }, 
+                options
+            );
+
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+        }
+
+        function stopTracking() {
+            if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+            watchId = null;
+            
+            statusText.textContent = "LOGGING STANDBY";
+            log("SCAN DATA FINALIZED.");
+
+            if (pointCloud.length > 0) saveData();
+
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+        }
+
+        function saveData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(pointCloud));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", `stardate_${Date.now()}.json`);
+            downloadAnchorNode.click();
+            log("DATA UPLOADED TO PADD.");
+        }
+
+        startBtn.addEventListener('click', startTracking);
+        stopBtn.addEventListener('click', stopTracking);
+        
+        // Boot up
+        initMap();
+    </script>
+</body>
+</html>
